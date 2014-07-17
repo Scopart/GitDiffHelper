@@ -9,11 +9,13 @@ Modified files are also displayed as a list in a panel so you can do anything yo
 Installation
 ============
 
-- Clone source code to Sublime Text packages folder.
+- If you have Package Control installed in Sublime just press `ctrl + shift + p` (Windows, Linux) or `⌘ + shift + p` (OS X) to open the Command Pallete. Start typing 'install' to select `Package Control: Install Package`, then search for `GitDiffHelper` and select it.
+- Otherwise clone source code to Sublime Text packages folder.
 
 Usage
 =====
 
+Use one of the following:
 - Bring up the command palette (it's `⌘ + shift + p`  in OS X and `ctrl + shift + p` in Windows or Linux) and type `gitdiffhelper` and select `GitDiffHelper: Launch it` command.
 - Use `ctrl + alt + g`
 
