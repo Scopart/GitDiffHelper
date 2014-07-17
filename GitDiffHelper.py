@@ -6,8 +6,7 @@ class GitDiffHelperCommand(sublime_plugin.WindowCommand):
 
     guh_output_view = None
     file_list = None
-    git_repo = None
-    settings = None
+    settings = {}
     settings_file = None
     main_folder = None
 
@@ -21,25 +20,31 @@ class GitDiffHelperCommand(sublime_plugin.WindowCommand):
         if os.path.isfile(self.settings_file):
             json_data = open(self.settings_file)
             self.settings = json.load(json_data)
-            self.git_repo = self.settings['git_repo_path']
+            json_data.close()
+        else:
+            self.settings = {}
 
     def find_git_repo(self):
-        if not self.git_repo:
+        if not self.settings or not 'git_repo_path' in self.settings:
             folder = self.main_folder
         else:
-            folder = self.git_repo
+            folder = self.settings['git_repo_path']
 
         if '.git' in os.listdir(folder):
-            self.git_repo = folder
+            self.settings['git_repo_path'] = folder
             self.prompt_for_commit_id()
         else:
-            self.window.show_input_panel("Git repository not found, enter your root git repository:", self.main_folder + '/', self.save_settings, None, None)
+            self.window.show_input_panel("Git repository not found, enter path of your git repository:", self.main_folder + '/', self.set_git_repo, None, None)
 
-    def save_settings(self, git_repo):
-        settings_file = open(self.settings_file, 'w')
-        settings_file.write(json.dumps({'git_repo_path':git_repo}, indent=4, separators=(',', ': ')))
-        settings_file.close()
+    def set_git_repo(self, git_repo):
+        self.settings['git_repo_path'] = git_repo
+        self.save_settings()
         self.run()
+
+    def save_settings(self):
+        settings_file = open(self.settings_file, 'w')
+        settings_file.write(json.dumps(self.settings, indent=4, separators=(',', ': ')))
+        settings_file.close()
 
     def prompt_for_commit_id(self):
         clipboard = '' if len(sublime.get_clipboard()) != 40 else sublime.get_clipboard()
@@ -47,17 +52,17 @@ class GitDiffHelperCommand(sublime_plugin.WindowCommand):
 
     def retrieve_files(self, commitid):
         try:
-            repo = git.Repo(self.git_repo)
+            repo = git.Repo(self.settings['git_repo_path'])
             active_branch = repo.active_branch
             last_commit = repo.commits(start=active_branch, max_count=1)[0]
+            if not commitid:
+                commitid = last_commit.id
+            selected_commit = repo.commit(commitid)
         except Exception, e:
             print e
             sublime.error_message('Error while fetching commits !')
             return False
 
-        if not commitid:
-            commitid = last_commit.id
-        selected_commit = repo.commit(commitid)
 
         diffs = last_commit.diff(repo, commitid, last_commit.id)
         for selected_diff in selected_commit.diffs:
@@ -65,10 +70,25 @@ class GitDiffHelperCommand(sublime_plugin.WindowCommand):
 
         file_list = []
         for diff in diffs:
-            filename = self.git_repo + '/' + diff.a_path
+            filename = self.settings['git_repo_path'] + '/' + diff.a_path
             if filename not in file_list:
                 file_list.append(filename)
         self.file_list = file_list
+
+        panel_name = 'guh_panel'
+        self.guh_output_view = self.window.get_output_panel(panel_name)
+        v = self.guh_output_view
+        v.set_read_only(False)
+        edit = v.begin_edit()
+        v.insert(edit, v.size(), 'List of modified files from '+commitid+' to '+last_commit.id+' on '+active_branch+':\n')
+        for filename in self.file_list:
+            v.insert(edit, v.size(), filename + '\n')
+
+        v.end_edit(edit)
+        v.show(v.size())
+        v.set_read_only(True)
+
+        self.window.run_command("show_panel", {"panel": "output." + panel_name})
 
         if len(self.file_list) > 10:
             self.comfirm_action()
@@ -76,21 +96,6 @@ class GitDiffHelperCommand(sublime_plugin.WindowCommand):
             self.open_files(0)
 
     def comfirm_action(self):
-        panel_name = 'guh_panel'
-        self.guh_output_view = self.window.get_output_panel(panel_name)
-        v = self.guh_output_view
-
-        v.set_read_only(False)
-        edit = v.begin_edit()
-        for filename in self.file_list:
-            v.insert(edit, v.size(), filename + '\n')
-
-        v.insert(edit, v.size(), str(len(self.file_list)) + ' files to open, are you sure ? (confirm in quick panel)' + '\n')
-        v.end_edit(edit)
-        v.show(v.size())
-        v.set_read_only(True)
-
-        self.window.run_command("show_panel", {"panel": "output." + panel_name})
         self.window.show_quick_panel(['Yes open '+str(len(self.file_list))+' files','No do nothing'], self.open_files)
 
     def open_files(self, arg):
