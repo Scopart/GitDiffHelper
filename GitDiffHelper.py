@@ -5,7 +5,9 @@ import os, json
 class GitDiffHelperCommand(sublime_plugin.WindowCommand):
 
     guh_output_view = None
-    file_list = None
+    file_list = []
+    deleted_files = []
+    renamed_files = {}
     settings = {}
     settings_file = None
     main_folder = None
@@ -30,11 +32,16 @@ class GitDiffHelperCommand(sublime_plugin.WindowCommand):
         else:
             folder = self.settings['git_repo_path']
 
-        if '.git' in os.listdir(folder):
-            self.settings['git_repo_path'] = folder
-            self.prompt_for_commit_id()
-        else:
+        try:
+            if '.git' in os.listdir(folder):
+                self.settings['git_repo_path'] = folder
+                self.prompt_for_commit_id()
+            else:
+                self.window.show_input_panel("Git repository not found, enter path of your git repository:", self.main_folder + '/', self.set_git_repo, None, None)
+        except Exception, e:
+            print e
             self.window.show_input_panel("Git repository not found, enter path of your git repository:", self.main_folder + '/', self.set_git_repo, None, None)
+
 
     def set_git_repo(self, git_repo):
         self.settings['git_repo_path'] = git_repo
@@ -68,12 +75,19 @@ class GitDiffHelperCommand(sublime_plugin.WindowCommand):
         for selected_diff in selected_commit.diffs:
             diffs.append(selected_diff)
 
-        file_list = []
+        self.file_list = []
+        self.deleted_files = []
+        self.renamed_files = {}
         for diff in diffs:
             filename = self.settings['git_repo_path'] + '/' + diff.a_path
-            if filename not in file_list:
-                file_list.append(filename)
-        self.file_list = file_list
+            if diff.rename_to:
+                new_file_name = os.path.dirname(filename) + '/' + diff.rename_to
+                self.renamed_files[filename] = new_file_name
+                filename = new_file_name
+            if diff.deleted_file and filename not in self.file_list:
+                self.deleted_files.append(filename)
+            elif not diff.deleted_file and filename not in self.file_list and filename not in self.deleted_files and filename not in self.renamed_files:
+                self.file_list.append(filename)
 
         panel_name = 'guh_panel'
         self.guh_output_view = self.window.get_output_panel(panel_name)
@@ -83,6 +97,12 @@ class GitDiffHelperCommand(sublime_plugin.WindowCommand):
         v.insert(edit, v.size(), 'List of modified files from '+commitid+' to '+last_commit.id+' on '+active_branch+':\n')
         for filename in self.file_list:
             v.insert(edit, v.size(), filename + '\n')
+        if self.deleted_files:
+            for filename in self.deleted_files:
+                v.insert(edit, v.size(), 'Deleted => ' + filename + '\n')
+        if self.renamed_files:
+            for old_filename,new_file_name in self.renamed_files.items():
+                v.insert(edit, v.size(), 'Renamed => ' + old_filename + ' -> ' + new_file_name + '\n')
 
         v.end_edit(edit)
         v.show(v.size())
