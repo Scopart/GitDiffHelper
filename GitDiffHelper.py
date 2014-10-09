@@ -38,8 +38,8 @@ class GitDiffHelperCommand(sublime_plugin.WindowCommand):
                 self.prompt_for_commit_id()
             else:
                 self.window.show_input_panel("Git repository not found, enter path of your git repository:", self.main_folder + '/', self.set_git_repo, None, None)
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
             self.window.show_input_panel("Git repository not found, enter path of your git repository:", self.main_folder + '/', self.set_git_repo, None, None)
 
 
@@ -65,8 +65,8 @@ class GitDiffHelperCommand(sublime_plugin.WindowCommand):
             if not commitid:
                 commitid = last_commit.id
             selected_commit = repo.commit(commitid)
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
             sublime.error_message('Error while fetching commits !')
             return False
 
