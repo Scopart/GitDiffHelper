@@ -111,7 +111,7 @@ class Git(object):
            you must update the execute_kwargs tuple housed in this module.
         """
         if GIT_PYTHON_TRACE and not GIT_PYTHON_TRACE == 'full':
-            print ' '.join(command)
+            print(' '.join(command))
 
         # Allow the user to have the command executed in their working dir.
         if with_keep_cwd or self.git_dir is None:
@@ -147,11 +147,11 @@ class Git(object):
 
         if GIT_PYTHON_TRACE == 'full':
             if stderr_value:
-              print "%s -> %d: '%s' !! '%s'" % (command, status, stdout_value, stderr_value)
+              print("%s -> %d: '%s' !! '%s'" % (command, status, stdout_value, stderr_value))
             elif stdout_value:
-              print "%s -> %d: '%s'" % (command, status, stdout_value)
+              print("%s -> %d: '%s'" % (command, status, stdout_value))
             else:
-              print "%s -> %d" % (command, status)
+              print("%s -> %d" % (command, status))
 
         # Allow access to the command's status code
         if with_extended_output:
